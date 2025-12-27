@@ -3,7 +3,7 @@ import random
 import os
 from tqdm import tqdm
 from dspy.teleprompt import BootstrapFewShot
-
+#sample logs/ change these to windows log samples for generation
 logs = [
     "20171223-22:15:29:606|Step_LSC|30002312|onStandStepChanged 3579",
     "20171223-22:15:29:635|Step_SPUtils|30002312| getTodayTotalDetailSteps = 1514038440000##6993##548365##8661##12266##27164404",
@@ -18,19 +18,19 @@ logs = [
 ]
  
 sample_input_string = "\n".join(logs)
-
+#add your model & api keys below
 try:
     model = dspy.LM(
-        model='openai/gpt-4o',
-        api_key='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',
+        model='add model name here',
+        api_key='add your api key here',
     )
     dspy.settings.configure(lm=model)
 
-    print("Connected to gpt-4o")
+    print("Connected to model")
 except:
     print("could not connect")
     exit()
-
+# Modify the signature below to fit the windows log generation task
 class GenerateSyntheticLog(dspy.Signature):
     """Analyze the formats of the sample logs then generate synthetic log lines that matches the patterns found in the samples.
     The generated log lines should follow the following instructions:
@@ -50,7 +50,7 @@ class GenerateSyntheticLog(dspy.Signature):
     synthetic_data = dspy.OutputField(
         description="A single synthetic log line that follows the format of the input logs"
     )
-
+# insert log generation training examples below. within the synthetic_data.
 train_example_1 = dspy.Example(
     sample_input_log=sample_input_string,
     synthetic_data="20180312-23:34:122|step_SPUtils|30002345|getTodayTotalDetailSteps = 15815142000##7491##365451##7852##48782##88785214"
@@ -87,8 +87,8 @@ optimizer = BootstrapFewShot(metric=validate_logic,  max_bootstrapped_demos = 2)
 
 compiled_log_generator = optimizer.compile(student=uncompiled_generator, trainset=train_set)
 print("Compilation complete")
-# synthetic_logs = []
 
+#total no. of logs to generate. Change as needed
 target_log_count = 100
 
 log_set = set()
