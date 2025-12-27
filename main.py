@@ -18,11 +18,11 @@ logs = [
 ]
  
 sample_input_string = "\n".join(logs)
-#add your model & api keys below
+#add your model & api keys below (api key comment out kori loba)
 try:
     model = dspy.LM(
         model='add model name here',
-        api_key='add your api key here',
+        # api_key='add your api key here', 
     )
     dspy.settings.configure(lm=model)
 
