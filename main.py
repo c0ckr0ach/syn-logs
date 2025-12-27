@@ -1,5 +1,6 @@
 import dspy
 import random
+import os
 from tqdm import tqdm
 from dspy.teleprompt import BootstrapFewShot
 
@@ -19,16 +20,13 @@ logs = [
 sample_input_string = "\n".join(logs)
 
 try:
-    local_llama = dspy.LM(
-        model='ollama_chat/llama3.1',
-        api_base='http://localhost:11434',
-        api_key='none',
-        max_tokens=500,
-        temperature=0.95
+    model = dspy.LM(
+        model='openai/gpt-4o',
+        api_key='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',
     )
-    dspy.settings.configure(lm=local_llama)
+    dspy.settings.configure(lm=model)
 
-    print("Connected to local llama3.1")
+    print("Connected to gpt-4o")
 except:
     print("could not connect")
     exit()
@@ -91,13 +89,12 @@ compiled_log_generator = optimizer.compile(student=uncompiled_generator, trainse
 print("Compilation complete")
 # synthetic_logs = []
 
-target_log_count = 50
-max_attempts =100
+target_log_count = 100
 
 log_set = set()
 print("generating logs..")
 with tqdm(total=target_log_count, desc="Generating Unique Logs", unit="log") as pbar:
-    while len(log_set) < target_log_count and max_attempts >0:
+    while len(log_set) < target_log_count:
         random_subset = random.sample(logs, 5)
         input_string = "\n".join(random_subset)
         prediction = compiled_log_generator(sample_input_log=input_string)
@@ -107,7 +104,6 @@ with tqdm(total=target_log_count, desc="Generating Unique Logs", unit="log") as 
             log_set.add(synthetic_log)
         if len(log_set) > prev_count:
             pbar.update(1)
-        max_attempts -= 1
     
 final_logs = list(log_set)
 print("generated synthetic logs:\n")

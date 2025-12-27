@@ -1,0 +1,10 @@
+20171223-22:15:29:606|Step_LSC|30002312|onStandStepChanged 3579
+20171223-22:15:29:615|Step_LSC|30002312|onExtend:1514038530000 14 0 4
+20171223-22:15:29:633|Step_StandReportReceiver|30002312|onReceive action: android.intent.action.SCREEN_ON
+20171223-22:15:29:635|Step_LSC|30002312|processHandleBroadcastAction action:android.intent.action.SCREEN_ON
+20171223-22:15:29:635|Step_StandStepCounter|30002312|flush sensor data
+20171223-22:15:29:635|Step_SPUtils|30002312| getTodayTotalDetailSteps = 1514038440000##6993##548365##8661##12266##27164404
+20171223-22:15:29:636|Step_SPUtils|30002312|setTodayTotalDetailSteps=1514038440000##7007##548365##8661##12361##27173954
+20171223-22:15:29:636|Step_LSC|30002312|onStandStepChanged 3579
+20171223-22:15:29:645|Step_ExtSDM|30002312|calculateCaloriesWithCache totalCalories=126775
+20171223-22:15:29:648|Step_ExtSDM|30002312|calculateAltitudeWithCache totalAltitude=240
