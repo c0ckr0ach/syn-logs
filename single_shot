@@ -1,0 +1,87 @@
+import dspy
+import random
+import os
+import time
+import litellm
+from tqdm import tqdm
+
+# --- CONFIGURATION ---
+os.environ["HUGGINGFACE_API_KEY"] = "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" # <--- Verify this is your NEW token
+
+# Fix 1: Drop complex params that confuse free models
+litellm.drop_params = True 
+
+# Fix 2: Use Zephyr (Fastest to wake up on free tier)
+try:
+    hf_model = dspy.LM(
+        model='huggingface/HuggingFaceH4/zephyr-7b-beta', 
+        max_tokens=1000
+    )
+    dspy.settings.configure(lm=hf_model)
+    print("✅ Connected to Zephyr")
+except Exception as e:
+    print(f"❌ Connection failed: {e}")
+    exit()
+
+logs = [
+    "20171223-22:15:29:606|Step_LSC|30002312|onStandStepChanged 3579",
+    "20171223-22:15:29:635|Step_SPUtils|30002312| getTodayTotalDetailSteps = 1514038440000##6993##548365##8661##12266##27164404",
+    "20171223-22:15:29:737|Step_LSC|30002312|onExtend:1514038530000 0 0 4",
+    "20171223-22:15:29:959|Step_ExtSDM|30002312|calculateCaloriesWithCache totalCalories=126797",
+    "20171223-22:15:29:962|Step_StandReportReceiver|30002312|REPORT : 7008 5003 150111 240",
+]
+
+class GenerateSyntheticLog(dspy.Signature):
+    """Generate a single new log line that follows the pattern of the input examples.
+    - Start with a valid timestamp YYYYMMDD-HH:MM:SS:MMM
+    - Keep format identical.
+    - OUTPUT ONLY THE LOG LINE. NO JSON. NO MARKDOWN."""
+    
+    sample_input_log = dspy.InputField(desc="Examples of log lines")
+    synthetic_data = dspy.OutputField(desc="The generated log line")
+
+# Fix 3: Use 'Predict' instead of 'ChainOfThought'
+# Predict is "dumber" but much more robust for free/smaller models
+generator = dspy.Predict(GenerateSyntheticLog)
+
+target_log_count = 50
+log_set = set()
+
+print(f"Generating logs... (Note: First log might take 20-30s if model is waking up)")
+
+with tqdm(total=target_log_count, unit="log") as pbar:
+    while len(log_set) < target_log_count:
+        random_subset = random.sample(logs, 4)
+        input_string = "\n".join(random_subset)
+        
+        try:
+            # Generate
+            pred = generator(sample_input_log=input_string)
+            raw_output = pred.synthetic_data
+            
+            # Fix 4: Cleaning logic for messy free-model output
+            # Free models often add "Here is the log:" or markdown quotes
+            clean_log = raw_output.replace("```", "").strip()
+            if "\n" in clean_log: clean_log = clean_log.split("\n")[0] # Take first line only
+            
+            # Simple validation
+            if "|" in clean_log and len(clean_log) > 20:
+                if clean_log not in log_set:
+                    log_set.add(clean_log)
+                    pbar.update(1)
+            
+            # Rate limit sleep
+            time.sleep(2)
+
+        except Exception as e:
+            err_msg = str(e)
+            # Fix 5: Specific handling for "Model is loading"
+            if "503" in err_msg or "loading" in err_msg.lower():
+                print("\n💤 Model is cold/loading. Waiting 20s...")
+                time.sleep(20) 
+            elif "429" in err_msg:
+                print("\n⚠️ Rate limit. Waiting 10s...")
+                time.sleep(10)
+            else:
+                # Ignore random network blips
+                pass

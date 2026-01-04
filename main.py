@@ -1,9 +1,27 @@
 import dspy
 import random
 import os
+import time
+import litellm
 from tqdm import tqdm
-from dspy.teleprompt import BootstrapFewShot
-#sample logs/ change these to windows log samples for generation
+
+
+os.environ["GROQ_API_KEY"] = "<API_KEY>"
+
+try:
+    model = dspy.LM(
+        model='groq/llama-3.1-8b-instant', 
+        max_tokens=1000,
+        temperature=0.95 
+    )
+    dspy.settings.configure(lm=model)
+    print("Connected to model")
+except Exception as e:
+    print(f"Could not connect: {e}")
+    exit()
+
+litellm.drop_params = True
+
 logs = [
     "20171223-22:15:29:606|Step_LSC|30002312|onStandStepChanged 3579",
     "20171223-22:15:29:635|Step_SPUtils|30002312| getTodayTotalDetailSteps = 1514038440000##6993##548365##8661##12266##27164404",
@@ -16,104 +34,69 @@ logs = [
     "20171223-22:15:35:98|Step_SPUtils|30002312|setTodayTotalDetailSteps=1514038440000##7017##548365##8661##13216##27179417",
     "20171223-22:19:58:508|Step_LSC|30002312|flush2DB result success",
 ]
- 
-sample_input_string = "\n".join(logs)
-#add your model & api keys below 
-try:
-    model = dspy.LM(
-        model='add model name here',
-        api_key='add your api key here', 
-    )
-    dspy.settings.configure(lm=model)
 
-    print("Connected to model")
-except:
-    print("could not connect")
-    exit()
-# Modify the signature below to fit the windows log generation task
 class GenerateSyntheticLog(dspy.Signature):
-    """Analyze the formats of the sample logs then generate synthetic log lines that matches the patterns found in the samples.
-    The generated log lines should follow the following instructions:
-    1. each log line should start with a timestamp in the format YYYYMMDD-HH:MM:SS:MMM
-    2. Each log line should be unique and not a duplicate of any input log line
-    3. you must generate new realistic data from the variable parts of the log lines
-    4. the parts to change are:
-        - timestamp
-        - the numeric sections of the events (eg: 7008 5003 150111 240) but keep the same number of sections
-    5. keep the non-numeric parts of the log lines the same(eg: onStandStepChanged, REPORT, etc)
-    """
-
-    sample_input_log = dspy.InputField(
-        desc="A string containing 5-10 log lines separated by newline characters to use as examples for generating new synthetic data"
-    )
-
-    synthetic_data = dspy.OutputField(
-        description="A single synthetic log line that follows the format of the input logs"
-    )
-# insert log generation training examples below. within the synthetic_data.
-train_example_1 = dspy.Example(
-    sample_input_log=sample_input_string,
-    synthetic_data="20180312-23:34:122|step_SPUtils|30002345|getTodayTotalDetailSteps = 15815142000##7491##365451##7852##48782##88785214"
-).with_inputs('sample_input_log')
-
-train_example_2 = dspy.Example(
-    sample_input_log=sample_input_string,
-    synthetic_data="20171223-22:16:05:999|Step_StandReportReceiver|30002312|REPORT : 8020 6015 160222 350"
-).with_inputs('sample_input_log')
-
-train_example_3 = dspy.Example(
-    sample_input_log=sample_input_string,
-    synthetic_data="20171223-22:18:45:112|Step_ExtSDM|30002312|calculateCaloriesWithCache totalCalories=129880"
-).with_inputs('sample_input_log')
-
-train_set = [train_example_1, train_example_2, train_example_3]
-
-def validate_logic(example, prediction, trace=None):
+    """Analyze the provided log examples. Generate ONE new synthetic log line that follows the exact same format.
+    - Start with a timestamp: YYYYMMDD-HH:MM:SS:MMM
+    - Maintain the pipe '|' separators.
+    - Create realistic variations of the numbers.
+    - Do NOT copy the input examples. Create new data.
+    - OUTPUT ONLY THE RAW LOG LINE. NO MARKDOWN."""
     
-    generated = prediction.synthetic_data
-    if not generated:
-        return False
-    has_length = len(generated) > 30
-    has_pipe = "|" in generated
-    is_new = generated not in example.sample_input_log
-    
-    return has_length and has_pipe and is_new
+    sample_input_log = dspy.InputField(desc="Examples of log lines")
+    synthetic_data = dspy.OutputField(desc="A single generated log line")
 
-print("compiling model....")
+generator = dspy.Predict(GenerateSyntheticLog)
 
-uncompiled_generator = dspy.ChainOfThought(GenerateSyntheticLog)
 
-optimizer = BootstrapFewShot(metric=validate_logic,  max_bootstrapped_demos = 2)
-
-compiled_log_generator = optimizer.compile(student=uncompiled_generator, trainset=train_set)
-print("Compilation complete")
-
-#total no. of logs to generate. Change as needed
-target_log_count = 100
-
+target_log_count = 500
 log_set = set()
-print("generating logs..")
-with tqdm(total=target_log_count, desc="Generating Unique Logs", unit="log") as pbar:
-    while len(log_set) < target_log_count:
-        random_subset = random.sample(logs, 5)
+
+for log in logs:
+    log_set.add(log.strip())
+
+initial_count = len(log_set)
+DELAY_SECONDS = 2
+
+print(f"Generating {target_log_count} NEW logs (starting with {initial_count} examples)...")
+
+with tqdm(total=target_log_count, unit="log") as pbar:
+    while (len(log_set) - initial_count) < target_log_count:
+        
+        random_subset = random.sample(logs, 3)
         input_string = "\n".join(random_subset)
-        prediction = compiled_log_generator(sample_input_log=input_string)
-        synthetic_log = prediction.synthetic_data
-        prev_count = len(log_set)
-        if synthetic_log:
-            log_set.add(synthetic_log)
-        if len(log_set) > prev_count:
-            pbar.update(1)
-    
-final_logs = list(log_set)
-print("generated synthetic logs:\n")
-for log in final_logs:
-    print(log)
+        
+        try:
+            prediction = generator(sample_input_log=input_string)
+            raw_log = prediction.synthetic_data
+            
+            clean_log = raw_log.replace("```", "").strip()
+            if "\n" in clean_log: clean_log = clean_log.split("\n")[0]
+            
+            if clean_log and "|" in clean_log and len(clean_log) > 20:
+
+                if clean_log not in log_set:
+                    log_set.add(clean_log)
+                    pbar.update(1)
+                    
+        except Exception as e:
+            if "429" in str(e):
+                print("Rate limit hit, sleeping...")
+                time.sleep(5)
+            else:
+                print(f"Error: {e}")
+        
+        time.sleep(DELAY_SECONDS)
+
+
+final_logs = [log for log in log_set if log not in logs]
+
+print(f"\nGenerated {len(final_logs)} NEW unique logs.")
 
 output_path = "outputs/synthetic_logs.txt"
+os.makedirs("outputs", exist_ok=True)
+
 with open(output_path, "w") as f:
     for log in final_logs:
-        clean_log = log.strip()
-        if clean_log:
-            f.write(clean_log+"\n")
-print("logs saved")
+        f.write(log + "\n")
+print("Logs saved.")
