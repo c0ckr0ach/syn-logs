@@ -6,12 +6,14 @@ import litellm
 from tqdm import tqdm
 
 
-os.environ["GROQ_API_KEY"] = "<API_KEY>"
+os.environ["OPENROUTER_API_KEY"] = ""
 
 try:
     model = dspy.LM(
-        model='groq/llama-3.1-8b-instant', 
-        max_tokens=1000,
+        model='openrouter/anthropic/claude-3.5-sonnet:free', 
+        api_base = 'https://openrouter.ai/api/v1',
+        api_key= os.environ["OPENROUTER_API_KEY"],
+        max_tokens=500,
         temperature=0.95 
     )
     dspy.settings.configure(lm=model)
@@ -49,7 +51,7 @@ class GenerateSyntheticLog(dspy.Signature):
 generator = dspy.Predict(GenerateSyntheticLog)
 
 
-target_log_count = 500
+target_log_count = 100
 log_set = set()
 
 for log in logs:
