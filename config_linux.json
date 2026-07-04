@@ -1,0 +1,28 @@
+{
+  "dataset_name": "linux",
+  "description":  "Linux syslog / journald / auth.log / kern.log",
+
+  "model_id": "qwen",
+
+  "generation": {
+    "target_logs":        2000,
+    "batch_size":         20,
+    "temperature":        0.85,
+    "max_new_tokens":     1024,
+    "anomaly_rate":       0.15,
+    "sample_window_size": 30,
+    "output_file":        "synthetic_linux_logs.txt",
+    "checkpoint_file":    "checkpoint_linux.txt",
+    "checkpoint_every_n": 200,
+    "write_labels":       true
+  },
+
+  "log_format": {
+    "auto_detect":       false,
+    "log_type":          "Linux Syslog",
+    "separator":         " ",
+    "fields":            ["month", "day", "time", "hostname", "process", "message"],
+    "timestamp_pattern": "Syslog RFC 3164  (Mon DD HH:MM:SS)",
+    "notes":             "Space-delimited. Process field often includes PID in brackets e.g. sshd[1234]."
+  }
+}

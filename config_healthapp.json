@@ -1,0 +1,28 @@
+{
+  "dataset_name": "healthapp",
+  "description":  "Android HiHealth fitness-tracker app logs (pipe-separated, 4 fields)",
+
+  "model_id": "qwen",
+
+  "generation": {
+    "target_logs":        2000,
+    "batch_size":         20,
+    "temperature":        0.85,
+    "max_new_tokens":     1024,
+    "anomaly_rate":       0.15,
+    "sample_window_size": 30,
+    "output_file":        "synthetic_healthapp_logs.txt",
+    "checkpoint_file":    "checkpoint_healthapp.txt",
+    "checkpoint_every_n": 200,
+    "write_labels":       true
+  },
+
+  "log_format": {
+    "auto_detect":       false,
+    "log_type":          "Android HealthApp",
+    "separator":         "|",
+    "fields":            ["timestamp", "component", "pid", "message"],
+    "timestamp_pattern": "HealthApp (YYYYMMDD-HH:MM:SS:ms)",
+    "notes":             "PID is a fixed 8-digit number. Messages are method names with numeric arguments."
+  }
+}

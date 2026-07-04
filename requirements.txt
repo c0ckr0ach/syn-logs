@@ -1,0 +1,8 @@
+# Core ML / inference
+torch>=2.1.0
+transformers>=4.44.0
+accelerate>=0.30.0
+bitsandbytes>=0.43.0
+
+# HuggingFace Hub (model download)
+huggingface_hub>=0.23.0

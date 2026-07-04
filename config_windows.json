@@ -1,0 +1,25 @@
+{
+  "dataset_name": "windows",
+  "description":  "Windows Security / System / Application Event logs",
+
+  "model_id": "qwen",
+
+  "generation": {
+    "target_logs":        2000,
+    "batch_size":         20,
+    "temperature":        0.85,
+    "max_new_tokens":     1024,
+    "anomaly_rate":       0.15,
+    "sample_window_size": 30,
+    "output_file":        "synthetic_windows_logs.txt",
+    "checkpoint_file":    "checkpoint_windows.txt",
+    "checkpoint_every_n": 200,
+    "write_labels":       true
+  },
+
+  "log_format": {
+    "auto_detect":       true,
+    "log_type":          "Windows Event Log",
+    "notes":             "Common fields: TimeCreated, Id, LevelDisplayName, ProviderName, Message. May be CSV or pipe-separated depending on export format."
+  }
+}
