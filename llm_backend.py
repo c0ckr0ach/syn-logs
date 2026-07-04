@@ -28,6 +28,7 @@ Install in Colab (run once in a code cell before importing this module):
 
 from __future__ import annotations
 
+import collections
 import re
 import torch
 from transformers import (
@@ -199,11 +200,18 @@ def generate_text(
         return_tensors="pt",
     )
     device = next(model.parameters()).device if hasattr(model, "parameters") else (model.device or "cuda")
-    # If tokenizer.apply_chat_template returns a BatchEncoding/dict instead of a raw tensor
-    if isinstance(encoded, dict):
+    # If tokenizer.apply_chat_template returns a dict-like BatchEncoding structure
+    if hasattr(encoded, "input_ids"):
+        input_ids = encoded.input_ids.to(device)
+    elif isinstance(encoded, (dict, collections.abc.Mapping)) or (isinstance(encoded, object) and "input_ids" in dir(encoded)):
+        # Fallback for dict-like structures
         input_ids = encoded["input_ids"].to(device)
     else:
-        input_ids = encoded.to(device)
+        try:
+            input_ids = encoded.to(device)
+        except AttributeError:
+            # If it's a dict-like/BatchEncoding but missed other checks
+            input_ids = encoded["input_ids"].to(device)
 
     with torch.no_grad():
         output_ids = model.generate(
