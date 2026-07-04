@@ -198,7 +198,8 @@ def generate_text(
         add_generation_prompt=True,
         return_tensors="pt",
     )
-    input_ids = encoded.to(model.device)
+    device = next(model.parameters()).device if hasattr(model, "parameters") else (model.device or "cuda")
+    input_ids = encoded.to(device)
 
     with torch.no_grad():
         output_ids = model.generate(

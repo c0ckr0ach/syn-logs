@@ -195,7 +195,9 @@ def run_pipeline(
             )
         except Exception as exc:
             consecutive_failures += 1
+            import traceback
             print(f"[Warning] Generation failed ({consecutive_failures}/3): {exc}")
+            traceback.print_exc()
             if consecutive_failures >= 3:
                 print("[Error] 3 consecutive failures — stopping early.")
                 break
