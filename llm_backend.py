@@ -199,11 +199,15 @@ def generate_text(
         return_tensors="pt",
     )
     device = next(model.parameters()).device if hasattr(model, "parameters") else (model.device or "cuda")
-    input_ids = encoded.to(device)
+    # If tokenizer.apply_chat_template returns a BatchEncoding/dict instead of a raw tensor
+    if isinstance(encoded, dict):
+        input_ids = encoded["input_ids"].to(device)
+    else:
+        input_ids = encoded.to(device)
 
     with torch.no_grad():
         output_ids = model.generate(
-            input_ids,
+            input_ids=input_ids,
             max_new_tokens=max_new_tokens,
             temperature=temperature if do_sample else 1.0,
             do_sample=do_sample,
