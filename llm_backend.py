@@ -117,11 +117,18 @@ def build_model(
         except ImportError:
             print("[Model] ⚠️  bitsandbytes not installed — falling back to fp16.")
 
+    # Phi-3/3.5 models from the Hub can have outdated modeling code that errors on
+    # newer transformers versions with: AttributeError: 'DynamicCache' object has no attribute 'seen_tokens'.
+    # Disabling trust_remote_code forces transformers to use the correct native implementation.
+    use_remote_code = True
+    if "phi-3" in resolved.lower() or "phi3" in resolved.lower() or "phi-4" in resolved.lower():
+        use_remote_code = False
+
     # ── Tokenizer ─────────────────────────────────────────────────────────────
     tokenizer = AutoTokenizer.from_pretrained(
         resolved,
         token=hf_token,
-        trust_remote_code=True,
+        trust_remote_code=use_remote_code,
     )
     # Some models don't have a pad token — use EOS as fallback
     if tokenizer.pad_token is None:
@@ -131,7 +138,7 @@ def build_model(
     # ── Model ─────────────────────────────────────────────────────────────────
     model_kwargs: dict = {
         "device_map":        device_map,
-        "trust_remote_code": True,
+        "trust_remote_code": use_remote_code,
         "token":             hf_token,
     }
     if quant_config is not None:
