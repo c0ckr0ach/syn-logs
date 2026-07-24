@@ -133,36 +133,47 @@ def build_messages(
     sample_text = "\n".join(window)
 
     # ── System message ────────────────────────────────────────────────────────
+    # Role + context framing (Anthropic / OpenAI best practice: tell the model
+    # *who* it is, *what* it produces, and *why* precision matters — not just
+    # a list of prohibitions).
     system_content = (
-        "You are a synthetic log generation assistant.\n"
-        "Your SOLE task is to output raw log lines that are indistinguishable "
-        "in format and style from the provided examples.\n\n"
-        "STRICT OUTPUT RULES — follow these without exception:\n"
-        "  • Output ONLY raw log lines, one per line.\n"
-        "  • Do NOT number the lines.\n"
-        "  • Do NOT add headers, bullet points, markdown, or code fences.\n"
-        "  • Do NOT explain, summarise, or add any commentary.\n"
-        "  • Do NOT repeat these instructions in your response.\n"
-        "  • Generate the EXACT number of lines requested — no more, no fewer."
+        "You are a log-data generation engine embedded in an ML training pipeline.\n"
+        "Your output is consumed directly by a parser — no human reads it first.\n\n"
+        "Produce raw log lines that are byte-for-byte compatible with the format "
+        "shown in the examples: same fields, same delimiter, same timestamp style, "
+        "same vocabulary. Every line must be independently parseable.\n\n"
+        "Output rules:\n"
+        "  • One log line per output line, nothing else.\n"
+        "  • No numbering, bullets, markdown, code fences, or commentary.\n"
+        "  • Vary timestamps, hostnames, PIDs, and messages — do not repeat values.\n"
+        "  • Generate the exact count requested — stopping early breaks the pipeline."
     )
 
     # ── Anomaly directive (empty string for normal batches) ───────────────────
     directive = ANOMALY_DIRECTIVES.get(anomaly_type, "")
     anomaly_block = (
-        f"\n{directive}\n"
+        f"\n<anomaly_directive>\n{directive}\n"
+        "Weave the anomalous lines naturally into the batch at varied positions. "
+        "They must remain syntactically valid log lines — the anomaly is semantic, "
+        "not structural.\n</anomaly_directive>\n"
         if directive
         else ""
     )
 
     # ── User message ──────────────────────────────────────────────────────────
+    # Structure: XML delimiters separate data from instructions so the model
+    # can't confuse reference lines with its own output (OpenAI tactic §6).
+    # The final line primes the model directly into log-output mode.
     user_content = (
-        f"LOG FORMAT DESCRIPTION:\n"
-        f"{format_description}\n\n"
-        f"EXAMPLE LOG LINES (reproduce this exact format and style):\n"
+        "<format>\n"
+        f"{format_description}\n"
+        "</format>\n\n"
+        "<examples>\n"
         f"{sample_text}\n"
+        "</examples>\n"
         f"{anomaly_block}\n"
-        f"Generate exactly {n_to_generate} new log lines now. "
-        f"Output ONLY the log lines, one per line — no other text:"
+        f"Write exactly {n_to_generate} new log lines. "
+        f"Follow the format above precisely.\n"
     )
 
     return [
